@@ -122,7 +122,7 @@ public class MusicPlayService extends Service {
         }
         // 对GlobalNumber中的播放队列执行添加操作
         @RequiresApi(api = Build.VERSION_CODES.O)
-        public void addMusic(Music music) throws IOException {
+        public boolean addMusic(Music music) throws IOException {
             // postion == -1 ， 队列为空 ， 添加队列的时候，直接播放
             if (position == -1) {
                 position++;
@@ -143,8 +143,19 @@ public class MusicPlayService extends Service {
                 // 改变通知显示
 
             }else{
-                GlobalNumber.musicPlayList.add(music);  // 添加到队列
+                if (GlobalNumber.musicPlayList.contains(music)) {
+                    Toast.makeText(getApplicationContext(),"添加失败，已经存在",Toast.LENGTH_SHORT).show();
+                    return false;
+                }else{
+                    GlobalNumber.musicPlayList.add(music);
+                    Toast.makeText(getApplicationContext(),"已添加到播放列表",Toast.LENGTH_SHORT).show();
+                    return true;
+
+                }
+                //                GlobalNumber.musicPlayList.add(music);  // 添加到队列
             }
+            return false;
+
 
         }
 
@@ -156,17 +167,20 @@ public class MusicPlayService extends Service {
          */
         @RequiresApi(api = Build.VERSION_CODES.O)
         public void playbyID(int p) throws IOException {
-            player.reset();
-            // MediaPlayer 状态重置
-            position = p;
-            // position 改变为播放的位置
-            player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
-            player.prepare();
-            player.start();
-            // MediaPlayer 加载音频资源，准备并播放
-            changeNotification(GlobalNumber.musicPlayList.get(position));
-            // 改变通知显示
+            try{
+                player.reset();
+                // MediaPlayer 状态重置
+                position = p;
+                // position 改变为播放的位置
+                player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
+                player.prepare();
+                player.start();
+                // MediaPlayer 加载音频资源，准备并播放
+                changeNotification(GlobalNumber.musicPlayList.get(position));            // 改变通知显示
+            }catch (IOException e){
+                Toast.makeText(getApplicationContext(),"播放失败，好像资源不存在",Toast.LENGTH_SHORT).show();
 
+            }
         }
         //播放
         public void play()   {
@@ -188,16 +202,23 @@ public class MusicPlayService extends Service {
         @RequiresApi(api = Build.VERSION_CODES.O)
         public void preMusic() throws IOException {
             if (position > 0 ) { // position > 0 防止下标越界错误 造成程序闪退
-                player.reset();
-                // MediaPlayer 状态重置
-                position--;
-                // position 位置减一
-                player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
-                player.prepare();
-                player.start();
-                // MediaPlayer 加载音频资源，准备并播放
-                changeNotification(GlobalNumber.musicPlayList.get(position));
-                // 改变通知显示
+                try{
+                    player.reset();
+                    // MediaPlayer 状态重置
+                    position--;
+                    // position 位置减一
+                    player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
+                    player.prepare();
+                    player.start();
+                    // MediaPlayer 加载音频资源，准备并播放
+                    changeNotification(GlobalNumber.musicPlayList.get(position));
+                    // 改变通知显示
+
+                }catch (IOException e){
+                    Toast.makeText(getApplicationContext(),"播放失败，好像资源不存在",Toast.LENGTH_SHORT).show();
+
+                }
+
             }else{
                 Toast.makeText(getApplicationContext(),"已经是第一首了",Toast.LENGTH_SHORT).show();
             }
@@ -210,16 +231,22 @@ public class MusicPlayService extends Service {
         @RequiresApi(api = Build.VERSION_CODES.O)
         public void nextMusic() throws IOException {
             if ( position < GlobalNumber.musicPlayList.size() - 1) { // position < 最后一个的下标  防止下标越界错误 造成程序闪退
-                player.reset();
-                // MediaPlayer 状态重置
-                position++;
-                // position 位置加一
-                player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
-                player.prepare();
-                player.start();
-                // MediaPlayer 加载音频资源，准备并播放
-                changeNotification(GlobalNumber.musicPlayList.get(position));
-                // 改变通知显示
+                try{
+                    player.reset();
+                    // MediaPlayer 状态重置
+                    position++;
+                    // position 位置加一
+                    player.setDataSource("https://music.163.com/song/media/outer/url?id="+ GlobalNumber.musicPlayList.get(position).getId()+".mp3");
+                    player.prepare();
+                    player.start();
+                    // MediaPlayer 加载音频资源，准备并播放
+                    changeNotification(GlobalNumber.musicPlayList.get(position));
+                    // 改变通知显示
+                }catch (IOException e){
+                    Toast.makeText(getApplicationContext(),"播放失败，好像资源不存在",Toast.LENGTH_SHORT).show();
+
+                }
+
             }else{
                 Toast.makeText(getApplicationContext(),"已经是最后一首了",Toast.LENGTH_SHORT).show();
             }

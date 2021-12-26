@@ -1,6 +1,8 @@
 package cn.edu.bistu.music.empty;
 
 
+import java.util.Objects;
+
 /***
  * 音乐实体类
  * 记录了 音乐的id，用于在 网易云中取得mp3文件
@@ -55,5 +57,18 @@ public class Music {
                 ", art='" + art + '\'' +
                 ", album='" + album + '\'' +
                 '}';
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null || getClass() != o.getClass()) return false;
+        Music music = (Music) o;
+        System.out.println(music.toString());
+        return id.equals(music.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
