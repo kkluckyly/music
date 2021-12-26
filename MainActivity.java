@@ -30,6 +30,7 @@ import java.util.Arrays;
 
 import cn.edu.bistu.music.bean.Artist;
 import cn.edu.bistu.music.bean.Artists;
+import cn.edu.bistu.music.bean.CheckBean;
 import cn.edu.bistu.music.bean.JsonRootBean;
 import cn.edu.bistu.music.bean.Songs;
 import cn.edu.bistu.music.empty.Music;
@@ -95,6 +96,41 @@ public class MainActivity extends AppCompatActivity {
         handler.sendEmptyMessageDelayed(UPDATE_PROGRESS, 500);
     }
 
+    /***
+     * 检查音乐是否可用
+     * @param id 歌曲id
+     * @throws IOException
+     */
+    private void checkMusic(String id) throws IOException {
+        String url = "http://api.we-chat.cn/check/music?id="+id;
+        // API url
+        OkHttpClient okHttpClient = new OkHttpClient();
+        final Request request = new Request.Builder()
+                .url(url)
+                .build();
+        final Call call = okHttpClient.newCall(request);
+        // OkHttp 对象,这里我采用同步的方法，由于主线程不能网络访问，当然要开个子线程啦，这和异步写法作用上一样的
+
+        new Thread(new Runnable() {
+            CheckBean checkBean2 = null;
+            @RequiresApi(api = Build.VERSION_CODES.O)
+            @Override
+            public void run() {
+                try {
+                    Response response = call.execute(); // 发起请求
+                    String text = response.body().string(); // 获取 服务器返回的结果
+                    checkBean2 = JSONObject.parseObject(text, CheckBean.class);
+                    if (!checkBean2.getSuccess()) {
+                        runOnUiThread(()->{
+                            Toast.makeText(getApplicationContext(),checkBean2.getMessage(),Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
+    }
 
     @Override
     protected void onStop() {
@@ -140,7 +176,7 @@ public class MainActivity extends AppCompatActivity {
             art.setText(m.getArt());
             album.setText(m.getAlbum());
 
-            // 这个自定义组件的点击响应事件
+            // 这个自定义组件(搜索结果)的点击响应事件
             view.setOnClickListener(
                     new View.OnClickListener() {
                         @RequiresApi(api = Build.VERSION_CODES.O)
@@ -148,9 +184,50 @@ public class MainActivity extends AppCompatActivity {
                         public void onClick(View v) {
                             // 打印当前点击的音乐数据
                             System.out.println(m.toString());
+
+                            System.out.println(GlobalNumber.musicPlayList.contains(m));
+                            if (!GlobalNumber.musicPlayList.contains(m)) {
+                                // 同时再创建一个自定义组件view2，并添加到播放队列的视图中
+                                View view2 = inflater.inflate(
+                                        R.layout.musicitems,
+                                        playList, false
+                                );
+                                // 和上面一样
+                                TextView title = view2.findViewById(R.id.title);
+                                TextView art = view2.findViewById(R.id.art);
+                                TextView album = view2.findViewById(R.id.album);
+                                title.setText(m.getTitle());
+                                art.setText(m.getArt());
+                                album.setText(m.getAlbum());
+                                System.out.println(Arrays.toString(GlobalNumber.musicPlayList.toArray()));
+
+                                playList.addView(view2);
+                                //自定义组件view2的响应事件
+                                view2.setOnClickListener(
+                                        new View.OnClickListener() {
+                                            @RequiresApi(api = Build.VERSION_CODES.O)
+                                            @Override
+                                            public void onClick(View v) {
+                                                try {
+                                                    checkMusic(m.getId());
+                                                    // GlobalNumber.musicPlayList.indexOf(m) 找到这首歌在播放队列中的位置
+                                                    // 并用 playbyID  根据目前音乐在队列中的位置，播放音乐。 在播放队列中点击任意音乐播放
+                                                    musicControl.playbyID(GlobalNumber.musicPlayList.indexOf(m));
+                                                    seekBar.setMax(musicControl.getDuration());
+                                                    updateProgress(); // 更新进度
+                                                    updatePlayerInformation(); // 更新 播放信息
+                                                } catch (IOException ioException) {
+                                                    ioException.printStackTrace();
+                                                }
+
+                                            }
+                                        }
+                                );
+                            }
+
                             // 添加到播放列表
                             try {
-                                musicControl.addMusic(m);
+                                  musicControl.addMusic(m);
 
                             } catch (IOException e) {
                                 e.printStackTrace();
@@ -165,41 +242,7 @@ public class MainActivity extends AppCompatActivity {
                                 playButton.setText("暂停");
                             }
 
-                            // 同时再创建一个自定义组件view2，并添加到播放队列的视图中
-                            View view2 = inflater.inflate(
-                                    R.layout.musicitems,
-                                    playList, false
-                            );
-                            // 和上面一样
-                            TextView title = view2.findViewById(R.id.title);
-                            TextView art = view2.findViewById(R.id.art);
-                            TextView album = view2.findViewById(R.id.album);
-                            title.setText(m.getTitle());
-                            art.setText(m.getArt());
-                            album.setText(m.getAlbum());
-                            playList.addView(view2);
-                            Toast.makeText(getApplicationContext(),"已添加到播放列表",Toast.LENGTH_SHORT).show();
-                            //自定义组件view2的响应事件
-                            view2.setOnClickListener(
-                                    new View.OnClickListener() {
-                                        @RequiresApi(api = Build.VERSION_CODES.O)
-                                        @Override
-                                        public void onClick(View v) {
-                                                try {
-                                                    // GlobalNumber.musicPlayList.indexOf(m) 找到这首歌在播放队列中的位置
-                                                    // 并用 playbyID  根据目前音乐在队列中的位置，播放音乐。 在播放队列中点击任意音乐播放
-                                                    musicControl.playbyID(GlobalNumber.musicPlayList.indexOf(m));
-                                                    seekBar.setMax(musicControl.getDuration());
-                                                    updateProgress(); // 更新进度
-                                                    updatePlayerInformation(); // 更新 播放信息
 
-                                                } catch (IOException ioException) {
-                                                    ioException.printStackTrace();
-                                                }
-
-                                        }
-                                    }
-                            );
                         }
                     }
             );
@@ -238,38 +281,49 @@ public class MainActivity extends AppCompatActivity {
                     jsonRootBean = JSONObject.parseObject(text, JsonRootBean.class);
                     // 通过 fastjson 将 字符串 解析成 JsonRootBean 的实体类
                     // 遍历 返回结果 JsonRootBean 里面 的列表
-                    for (Songs song: jsonRootBean.getResult().getSongs() ) {
-                        Music music = new Music();
-                        // 初始化一个音乐对象
-                        music.setId(String.valueOf(song.getId()));
-                        // 设置music id
-                        music.setTitle(song.getName());
-                        // 设置music 歌名
-                        String author = "";
-                        // 音乐作者可能是多作者，
-                        // 通过遍历把 所有作者添加到 author 字符串中
-                        // 并且添加到 music对象中
-                        for (Artists artist: song.getArtists()) {
-                            author+= " " + artist.getName();
-                        }
-                        music.setArt(author);
-                        // 设置music 专辑
-                        music.setAlbum(song.getAlbum().getName());
-                        // 添加到搜索结果的列表
-                        musics.add(music);
+                    if(jsonRootBean.getResult().getSongCount()==0){
 
-                    }
-                    // 在UI线程中执行的操作
-                    runOnUiThread(
-                            () -> {
-                                // Log 打印搜索结果的列表
-                                System.out.println(Arrays.toString(musics.toArray()));
-                                // 防止重复添加，清空一下搜索结果 的线性布局组件
-                                searchResult.removeAllViews();
-                                // 调用上面那个initSearchResult
-                                initSearchResult(searchResult,musics);
+                        runOnUiThread(
+                                () -> {
+                                    Toast.makeText(getApplicationContext(),"未找到歌曲",Toast.LENGTH_SHORT).show();
+                                    searchResultScroll.setVisibility(View.GONE);
+                                    playListScroll.setVisibility(View.VISIBLE);
+                                }
+                        );
+                    }else {
+                        for (Songs song : jsonRootBean.getResult().getSongs()) {
+                            Music music = new Music();
+                            // 初始化一个音乐对象
+                            music.setId(String.valueOf(song.getId()));
+                            // 设置music id
+                            music.setTitle(song.getName());
+                            // 设置music 歌名
+                            String author = "";
+                            // 音乐作者可能是多作者，
+                            // 通过遍历把 所有作者添加到 author 字符串中
+                            // 并且添加到 music对象中
+                            for (Artists artist : song.getArtists()) {
+                                author += " " + artist.getName();
                             }
-                    );
+                            music.setArt(author);
+                            // 设置music 专辑
+                            music.setAlbum(song.getAlbum().getName());
+                            // 添加到搜索结果的列表
+                            musics.add(music);
+
+                        }
+                        // 在UI线程中执行的操作
+                        runOnUiThread(
+                                () -> {
+                                    // Log 打印搜索结果的列表
+                                    System.out.println(Arrays.toString(musics.toArray()));
+                                    // 防止重复添加，清空一下搜索结果 的线性布局组件
+                                    searchResult.removeAllViews();
+                                    // 调用上面那个initSearchResult
+                                    initSearchResult(searchResult, musics);
+                                }
+                        );
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
